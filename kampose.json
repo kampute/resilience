@@ -1,0 +1,59 @@
+{
+    "convention": "docfx",
+    "outputDirectory": ".site",
+    "audit": {
+        "options": [
+            "recommended"
+        ],
+        "stopOnIssues": true
+    },
+    "assemblies": [
+        "src/bin/Release/net10.0/Kampute.Resilience.dll"
+    ],
+    "topics": [
+        "docs/**/*.md"
+    ],
+    "topicHierarchy": "index",
+    "topicOrder": [
+        "docs/overview.md"
+    ],
+    "assets": [
+        {
+            "source": [
+                "LICENSE",
+                "docs/*.png"
+            ]
+        }
+    ],
+    "theme": "classic",
+    "themeSettings": {
+        "projectName": "Kampute.Resilience",
+        "projectSlogan": "A lightweight .NET library for retrying operations that fail transiently.",
+        "projectLogoLightUri": "logo-dark.png",
+        "projectLogoDarkUri": "logo-light.png",
+        "faviconUri": "logo-dark.png",
+        "menuItems": [
+            {
+                "title": "Home",
+                "url": "index.html"
+            },
+            "overview",
+            {
+                "title": "API Reference",
+                "url": "api/index.html"
+            },
+            {
+                "title": "GitHub",
+                "url": "https://github.com/kampute/resilience"
+            }
+        ],
+        "groupTypesByNamespace": true,
+        "pageFooter": [
+            "- Copyright © {{now 'yyyy'}} Kampute",
+            "- [MIT License](~/LICENSE)"
+        ],
+        "pageFooterRight": [
+            "Built with [Kampose](https://kampute.github.io/kampose/)"
+        ]
+    }
+}
