@@ -20,8 +20,12 @@ namespace Kampute.Resilience
     /// retry. Use one session per operation; the strategy can be shared.
     /// </para>
     /// <para>
+    /// A derived class can take the decision or the delay from elsewhere, such as a retry time that the failure suggests or the state of the
+    /// application, by overriding <see cref="TryGetRetryDelay"/>. The session still counts the retries and applies its delay limit.
+    /// </para>
+    /// <para>
     /// The longest delay a session waits is <see cref="int.MaxValue"/> milliseconds (about 24.8 days), the limit of <see cref="Task.Delay(TimeSpan, CancellationToken)"/>
-    /// on .NET Framework. If the strategy returns a longer delay, the session does not retry.
+    /// on .NET Framework. If the strategy, or an override of <see cref="TryGetRetryDelay"/>, returns a longer delay, the session does not retry.
     /// </para>
     /// </remarks>
     public class RetrySession : IRetrySession
@@ -68,7 +72,7 @@ namespace Kampute.Resilience
         public virtual TimeSpan Elapsed => _timer.Elapsed;
 
         /// <summary>
-        /// Determines whether the strategy allows another retry and, if so, asynchronously waits for the delay that the strategy sets before it.
+        /// Determines whether another retry is allowed and, if so, asynchronously waits for the delay before it.
         /// </summary>
         /// <param name="cancellationToken">
         /// A token that can be used to cancel the wait.
@@ -79,6 +83,9 @@ namespace Kampute.Resilience
         /// <exception cref="OperationCanceledException">
         /// Thrown if <paramref name="cancellationToken"/> is canceled.
         /// </exception>
+        /// <remarks>
+        /// <see cref="TryGetRetryDelay"/> decides whether to retry and the delay; by default, the <see cref="Strategy"/> does.
+        /// </remarks>
         public virtual async Task<bool> WaitToRetryAsync(CancellationToken cancellationToken)
         {
             if (!TryScheduleRetry(out var delay))
@@ -89,7 +96,7 @@ namespace Kampute.Resilience
         }
 
         /// <summary>
-        /// Determines whether the strategy allows another retry and, if so, blocks the calling thread for the delay that the strategy sets before it.
+        /// Determines whether another retry is allowed and, if so, blocks the calling thread for the delay before it.
         /// </summary>
         /// <param name="cancellationToken">
         /// A token that can be used to cancel the wait.
@@ -100,6 +107,9 @@ namespace Kampute.Resilience
         /// <exception cref="OperationCanceledException">
         /// Thrown if <paramref name="cancellationToken"/> is canceled. A wait in progress ends as soon as the token is canceled.
         /// </exception>
+        /// <remarks>
+        /// <see cref="TryGetRetryDelay"/> decides whether to retry and the delay; by default, the <see cref="Strategy"/> does.
+        /// </remarks>
         public virtual bool WaitToRetry(CancellationToken cancellationToken)
         {
             if (!TryScheduleRetry(out var delay))
@@ -122,7 +132,8 @@ namespace Kampute.Resilience
         /// Updates the state of the session when a retry is allowed.
         /// </summary>
         /// <remarks>
-        /// This method is called when the strategy allows another retry, before the wait for its delay begins. The base implementation counts the retry.
+        /// This method is called when <see cref="TryGetRetryDelay"/> allows another retry with a delay that the session can wait, before the wait
+        /// begins. The base implementation counts the retry.
         /// </remarks>
         protected virtual void OnRetryScheduled()
         {
@@ -130,7 +141,31 @@ namespace Kampute.Resilience
         }
 
         /// <summary>
-        /// Asks the strategy for the delay before the next retry, applies the longest supported delay, and counts the retry if it is allowed.
+        /// Decides whether another retry is allowed and, if so, the delay before it.
+        /// </summary>
+        /// <param name="delay">
+        /// When this method returns <see langword="true"/>, the delay to wait before the next retry.
+        /// </param>
+        /// <returns>
+        /// <see langword="true"/> if another retry is allowed; otherwise, <see langword="false"/>.
+        /// </returns>
+        /// <remarks>
+        /// <para>
+        /// <see cref="WaitToRetry(CancellationToken)"/> and <see cref="WaitToRetryAsync(CancellationToken)"/> call this method once for each
+        /// requested retry. The base implementation asks the <see cref="Strategy"/>, passing <see cref="Elapsed"/> and <see cref="RetryCount"/>.
+        /// Override it to base the decision or the delay on more than the strategy; call the base implementation to keep the strategy's decision
+        /// and limits.
+        /// </para>
+        /// <para>
+        /// The session applies the result: a negative delay is waited as zero, a delay longer than <see cref="int.MaxValue"/> milliseconds stops
+        /// retrying, and an allowed retry is counted through <see cref="OnRetryScheduled"/>. An override therefore does not count the retry itself.
+        /// </para>
+        /// </remarks>
+        protected virtual bool TryGetRetryDelay(out TimeSpan delay)
+            => Strategy.TryGetRetryDelay(Elapsed, RetryCount, out delay);
+
+        /// <summary>
+        /// Takes the decision of <see cref="TryGetRetryDelay"/>, applies the longest supported delay, and counts the retry if it is allowed.
         /// </summary>
         /// <param name="delay">
         /// When this method returns <see langword="true"/>, the delay to wait before the next retry.
@@ -140,7 +175,7 @@ namespace Kampute.Resilience
         /// </returns>
         private bool TryScheduleRetry(out TimeSpan delay)
         {
-            if (!Strategy.TryGetRetryDelay(Elapsed, RetryCount, out delay) || !RetryDelay.TryAccept(ref delay))
+            if (!TryGetRetryDelay(out delay) || !RetryDelay.TryAccept(ref delay))
                 return false;
 
             OnRetryScheduled();

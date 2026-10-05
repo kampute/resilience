@@ -38,7 +38,7 @@ namespace Kampute.Resilience.Strategies.Modifiers
         /// </remarks>
         public JitterModifier(IRetryStrategy innerStrategy, double jitterFactor)
         {
-            if (jitterFactor < 0.0 || jitterFactor > 1.0)
+            if (double.IsNaN(jitterFactor) || jitterFactor < 0.0 || jitterFactor > 1.0)
                 throw new ArgumentOutOfRangeException(nameof(jitterFactor), "Jitter factor must be a value between 0 and 1, inclusive.");
 
             InnerStrategy = innerStrategy ?? throw new ArgumentNullException(nameof(innerStrategy));

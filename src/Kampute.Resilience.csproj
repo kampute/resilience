@@ -5,7 +5,7 @@
     <Title>Kampute.Resilience</Title>
     <Description>A lightweight, dependency-free .NET library for retrying operations that fail transiently. Compose constant, linear, Fibonacci or exponential backoff with retry limits, elapsed-time limits, delay caps and jitter; build immutable, fluent retry policies that choose which exceptions and returned results to retry and hook into each retry; and run synchronous or asynchronous operations with little overhead. Retry sessions support retry loops that you write yourself.</Description>
     <Authors>Kambiz Khojasteh</Authors>
-    <Version>1.0.0</Version>
+    <Version>1.1.0</Version>
     <Company>Kampute</Company>
     <Copyright>Copyright (c) 2026 Kampute</Copyright>
     <LangVersion>latest</LangVersion>

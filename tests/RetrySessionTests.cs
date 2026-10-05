@@ -177,5 +177,105 @@
                 Assert.That(session.RetryCount, Is.Zero);
             }
         }
+
+        [Test]
+        public async Task WaitToRetryAsync_WhenTryGetRetryDelayIsOverridden_WaitsTheOverridingDelayAndCountsTheRetry()
+        {
+            var expectedDelay = TimeSpan.FromMilliseconds(50);
+            var mockStrategy = new Mock<IRetryStrategy>();
+            var session = new DecidingSession(mockStrategy.Object, true, expectedDelay);
+
+            var timer = Stopwatch.StartNew();
+            var result = await session.WaitToRetryAsync(CancellationToken.None);
+            timer.Stop();
+
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(result, Is.True);
+                Assert.That(session.RetryCount, Is.EqualTo(1u));
+                Assert.That(timer.Elapsed, Is.EqualTo(expectedDelay).Within(TimeSpan.FromMilliseconds(100)));
+            }
+            mockStrategy.Verify(s => s.TryGetRetryDelay(It.IsAny<TimeSpan>(), It.IsAny<uint>(), out It.Ref<TimeSpan>.IsAny), Times.Never);
+        }
+
+        [Test]
+        public void WaitToRetry_WhenTryGetRetryDelayIsOverridden_WaitsTheOverridingDelayAndCountsTheRetry()
+        {
+            var expectedDelay = TimeSpan.FromMilliseconds(50);
+            var mockStrategy = new Mock<IRetryStrategy>();
+            var session = new DecidingSession(mockStrategy.Object, true, expectedDelay);
+
+            var timer = Stopwatch.StartNew();
+            var result = session.WaitToRetry(CancellationToken.None);
+            timer.Stop();
+
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(result, Is.True);
+                Assert.That(session.RetryCount, Is.EqualTo(1u));
+                Assert.That(timer.Elapsed, Is.EqualTo(expectedDelay).Within(TimeSpan.FromMilliseconds(100)));
+            }
+            mockStrategy.Verify(s => s.TryGetRetryDelay(It.IsAny<TimeSpan>(), It.IsAny<uint>(), out It.Ref<TimeSpan>.IsAny), Times.Never);
+        }
+
+        [Test]
+        public async Task WaitToRetry_WhenOverriddenTryGetRetryDelayDeclines_ReturnsFalseWithoutRetrying()
+        {
+            var noDelay = TimeSpan.Zero;
+            var mockStrategy = new Mock<IRetryStrategy>();
+            mockStrategy.Setup(s => s.TryGetRetryDelay(It.IsAny<TimeSpan>(), It.IsAny<uint>(), out noDelay)).Returns(true);
+            var asyncSession = new DecidingSession(mockStrategy.Object, false, TimeSpan.Zero);
+            var syncSession = new DecidingSession(mockStrategy.Object, false, TimeSpan.Zero);
+
+            var asyncResult = await asyncSession.WaitToRetryAsync(CancellationToken.None);
+            var syncResult = syncSession.WaitToRetry(CancellationToken.None);
+
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(asyncResult, Is.False);
+                Assert.That(asyncSession.RetryCount, Is.Zero);
+                Assert.That(syncResult, Is.False);
+                Assert.That(syncSession.RetryCount, Is.Zero);
+            }
+        }
+
+        [Test]
+        public async Task WaitToRetry_WhenOverridingDelayExceedsLimit_ReturnsFalseWithoutRetrying()
+        {
+            var tooLong = TimeSpan.FromDays(60);
+            var mockStrategy = new Mock<IRetryStrategy>();
+            var asyncSession = new DecidingSession(mockStrategy.Object, true, tooLong);
+            var syncSession = new DecidingSession(mockStrategy.Object, true, tooLong);
+
+            var asyncResult = await asyncSession.WaitToRetryAsync(CancellationToken.None);
+            var syncResult = syncSession.WaitToRetry(CancellationToken.None);
+
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(asyncResult, Is.False);
+                Assert.That(asyncSession.RetryCount, Is.Zero);
+                Assert.That(syncResult, Is.False);
+                Assert.That(syncSession.RetryCount, Is.Zero);
+            }
+        }
+
+        private sealed class DecidingSession : RetrySession
+        {
+            private readonly bool _retry;
+            private readonly TimeSpan _delay;
+
+            public DecidingSession(IRetryStrategy strategy, bool retry, TimeSpan delay)
+                : base(strategy)
+            {
+                _retry = retry;
+                _delay = delay;
+            }
+
+            protected override bool TryGetRetryDelay(out TimeSpan delay)
+            {
+                delay = _delay;
+                return _retry;
+            }
+        }
     }
 }
