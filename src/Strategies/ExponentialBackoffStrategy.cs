@@ -27,13 +27,13 @@ namespace Kampute.Resilience.Strategies
         /// The factor by which the delay is multiplied for each further retry.
         /// </param>
         /// <exception cref="ArgumentOutOfRangeException">
-        /// Thrown if <paramref name="initialDelay"/> is negative, or <paramref name="multiplier"/> is less than 1.
+        /// Thrown if <paramref name="initialDelay"/> is negative, or <paramref name="multiplier"/> is less than 1 or is <see cref="double.NaN"/>.
         /// </exception>
         public ExponentialBackoffStrategy(TimeSpan initialDelay, double multiplier)
         {
             if (initialDelay < TimeSpan.Zero)
                 throw new ArgumentOutOfRangeException(nameof(initialDelay), initialDelay, "The initial delay must not be negative.");
-            if (multiplier < 1.0)
+            if (double.IsNaN(multiplier) || multiplier < 1.0)
                 throw new ArgumentOutOfRangeException(nameof(multiplier), "Multiplier must be at least 1.");
 
             InitialDelay = initialDelay;
@@ -73,8 +73,15 @@ namespace Kampute.Resilience.Strategies
         /// </returns>
         public bool TryGetRetryDelay(TimeSpan elapsed, uint retryCount, out TimeSpan delay)
         {
+            // A zero delay never grows; multiplying it by an overflowed power would produce NaN.
+            if (InitialDelay == TimeSpan.Zero)
+            {
+                delay = TimeSpan.Zero;
+                return true;
+            }
+
             var ticks = InitialDelay.Ticks * Math.Pow(Multiplier, retryCount);
-            delay = double.IsNaN(ticks) || ticks >= TimeSpan.MaxValue.Ticks
+            delay = ticks >= TimeSpan.MaxValue.Ticks
                 ? TimeSpan.MaxValue
                 : TimeSpan.FromTicks((long)ticks);
 

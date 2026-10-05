@@ -7,11 +7,11 @@
     [TestFixture]
     public class ExponentialBackoffStrategyTests
     {
-        [Test]
-        public void Constructor_WhenMultiplierIsLessThanOne_ThrowsArgumentOutOfRangeException()
+        [TestCase(0.5)]
+        [TestCase(double.NaN)]
+        public void Constructor_WhenMultiplierIsLessThanOneOrNaN_ThrowsArgumentOutOfRangeException(double multiplier)
         {
             var initialDelay = TimeSpan.FromSeconds(1);
-            var multiplier = 0.5;
 
             var ex = Assert.Throws<ArgumentOutOfRangeException>(() => new ExponentialBackoffStrategy(initialDelay, multiplier));
 

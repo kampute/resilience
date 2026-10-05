@@ -83,14 +83,19 @@ namespace Kampute.Resilience
         }
 
         /// <summary>
-        /// Creates a strategy that retries once, at the specified time.
+        /// Creates a strategy that retries once, after the time that remains until the specified time when this method is called.
         /// </summary>
         /// <param name="after">
-        /// The time of the retry. The delay is computed from it when this method is called; a past time produces a zero delay.
+        /// The time to retry at. A past time produces a zero delay.
         /// </param>
         /// <returns>
         /// A strategy that allows a single retry.
         /// </returns>
+        /// <remarks>
+        /// The delay is fixed when this method is called, not when the operation fails. Create the strategy when the retry time becomes known,
+        /// such as from a response that suggests it; a strategy that is stored and used later waits the same delay after each failure, whatever
+        /// the time then.
+        /// </remarks>
         public static IRetryStrategy Once(DateTimeOffset after)
         {
             var delay = after - DateTimeOffset.UtcNow;
@@ -232,7 +237,7 @@ namespace Kampute.Resilience
         /// A strategy that retries without limit.
         /// </returns>
         /// <exception cref="ArgumentOutOfRangeException">
-        /// Thrown if <paramref name="initialDelay"/> is negative, or <paramref name="multiplier"/> is less than 1.
+        /// Thrown if <paramref name="initialDelay"/> is negative, or <paramref name="multiplier"/> is less than 1 or is <see cref="double.NaN"/>.
         /// </exception>
         public static IRetryStrategy Exponential(TimeSpan initialDelay, double multiplier = 2.0)
         {
@@ -252,7 +257,7 @@ namespace Kampute.Resilience
         /// A strategy that retries without limit.
         /// </returns>
         /// <exception cref="ArgumentOutOfRangeException">
-        /// Thrown if <paramref name="millisecondsInitialDelay"/> is negative, or <paramref name="multiplier"/> is less than 1.
+        /// Thrown if <paramref name="millisecondsInitialDelay"/> is negative, or <paramref name="multiplier"/> is less than 1 or is <see cref="double.NaN"/>.
         /// </exception>
         public static IRetryStrategy Exponential(int millisecondsInitialDelay, double multiplier = 2.0)
         {

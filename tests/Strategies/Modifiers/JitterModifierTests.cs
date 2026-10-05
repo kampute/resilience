@@ -11,6 +11,7 @@
     {
         [TestCase(-0.1)]
         [TestCase(1.1)]
+        [TestCase(double.NaN)]
         public void Constructor_WhenJitterFactorIsOutOfRange_ThrowsArgumentOutOfRangeException(double jitterFactor)
         {
             var mockInner = new Mock<IRetryStrategy>();

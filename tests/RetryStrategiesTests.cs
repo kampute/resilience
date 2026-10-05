@@ -144,6 +144,26 @@ namespace Kampute.Resilience.Test
         }
 
         [Test]
+        public void ZeroGrowth_KeepsTheDelayInsteadOfSaturating()
+        {
+            var cases = new[]
+            {
+                (Strategy: RetryStrategies.Exponential(TimeSpan.Zero), Expected: TimeSpan.Zero),
+                (Strategy: RetryStrategies.Fibonacci(TimeSpan.Zero), Expected: TimeSpan.Zero),
+                (Strategy: RetryStrategies.Fibonacci(Second, TimeSpan.Zero), Expected: Second),
+            };
+
+            using (Assert.EnterMultipleScope())
+            {
+                foreach (var (strategy, expected) in cases)
+                {
+                    Assert.That(strategy.TryGetRetryDelay(TimeSpan.Zero, uint.MaxValue, out var delay), Is.True, strategy.GetType().Name);
+                    Assert.That(delay, Is.EqualTo(expected), strategy.GetType().Name);
+                }
+            }
+        }
+
+        [Test]
         public void LinearDelay_PreservesTickPrecision()
         {
             var strategy = RetryStrategies.Linear(TimeSpan.FromTicks(1), TimeSpan.FromTicks(2));

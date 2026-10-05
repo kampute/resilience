@@ -92,8 +92,15 @@ namespace Kampute.Resilience.Strategies
         /// </returns>
         public bool TryGetRetryDelay(TimeSpan elapsed, uint retryCount, out TimeSpan delay)
         {
+            // A zero step never grows the delay; multiplying it by an overflowed Fibonacci number would produce NaN.
+            if (DelayStep == TimeSpan.Zero)
+            {
+                delay = InitialDelay;
+                return true;
+            }
+
             var ticks = InitialDelay.Ticks + DelayStep.Ticks * FibonacciNumber(retryCount);
-            delay = double.IsNaN(ticks) || ticks >= TimeSpan.MaxValue.Ticks
+            delay = ticks >= TimeSpan.MaxValue.Ticks
                 ? TimeSpan.MaxValue
                 : TimeSpan.FromTicks((long)ticks);
 
